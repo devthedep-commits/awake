@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Failure - Escaperoom Einde</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+
+        /* --- AUDIO ELEMENTS (Verborgen) --- */
+        audio { display: none; }
+
+        /* --- DE HOOFDSCÈNE (Begin) --- */
+        #scene-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #main-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+        }
+
+        #computer-hotspot {
+            position: absolute;
+            bottom: 15%; 
+            right: 5%;
+            width: 25%;  
+            height: 35%; 
+            cursor: pointer;
+            z-index: 10;
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+        #computer-hotspot:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(100, 255, 255, 0.5);
+        }
+
+        /* --- HET COMPUTER SCHERM (TERMINAL) --- */
+        #terminal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #050505;
+            color: #33ff00;
+            z-index: 100;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 0 0 5px #33ff00;
+        }
+
+        /* Scanline effect */
+        #terminal-overlay::before {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+
+        .terminal-content {
+            z-index: 5;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        input[type="text"] {
+            background: transparent; border: none;
+            border-bottom: 2px solid #33ff00;
+            color: #33ff00; font-family: 'Courier New', Courier, monospace;
+            font-size: 1.5rem; outline: none;
+            text-transform: uppercase; width: 200px;
+            text-align: center; text-shadow: 0 0 5px #33ff00;
+        }
+        
+        .cursor { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* --- FASE 2: SUCCESS SCHERM (2.png) --- */
+        #final-image-container {
+            display: none; /* Start verborgen */
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 200; /* Bovenop terminal tekst */
+            background: #000;
+        }
+        #final-image-container img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+
+        /* --- FLASH BERICHT "UITGESPEELD" --- */
+        #flash-message {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 300; /* Bovenop alles */
+            font-size: 3rem; font-weight: bold;
+            color: gold; text-align: center;
+            text-shadow: 2px 2px 4px #000, 0 0 20px red;
+            width: 80%;
+            animation: zoomIn 0.5s ease-out;
+        }
+        @keyframes zoomIn { from { transform: translate(-50%, -50%) scale(0); } to { transform: translate(-50%, -50%) scale(1); } }
+
+        /* --- FASE 3: CREDITS SCHERM --- */
+        #credits-screen {
+            display: none; /* Start verborgen */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #111;
+            color: #fff;
+            z-index: 400; /* Hoogste laag */
+            overflow: hidden; /* Verberg scrollbalken */
+            justify-content: center; 
+        }
+
+        /* De container die gaat bewegen */
+        #credits-content {
+            position: absolute;
+            top: 100%; /* Start onderaan het scherm */
+            width: 100%;
+            text-align: center;
+            padding-bottom: 100px;
+        }
+
+        /* De animatie klasse */
+        .start-scrolling {
+            /* 100s = 100 seconden scrollen, lekker sloom */
+            animation: scrollUp 100s linear forwards; 
+        }
+
+        @keyframes scrollUp {
+            0% { top: 100%; }
+            100% { top: -450%; } /* Ver doorgeschoven zodat de lange lijst helemaal verdwijnt */
+        }
+
+        #credits-screen h1 { font-size: 4rem; margin-bottom: 60px; color: #33ff00; text-shadow: 0 0 15px #33ff00;}
+        .credit-block { margin-bottom: 30px; }
+        .credit-role { font-size: 1.1rem; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px;}
+        .credit-name { font-size: 1.8rem; font-weight: bold; letter-spacing: 1px; color: #fff;}
+
+        /* Klein logootje onderaan de credits */
+        .final-logo { margin-top: 50px; font-size: 3rem; }
+
+    </style>
+</head>
+<body>
+
+    <audio id="audio-clap" src="klap.mp3"></audio>
+    <audio id="audio-xmas" src="kerst.mp3" loop></audio>
+
+    <div id="scene-container">
+        <img src="1.png" id="main-image" alt="Bevroren Laboratorium">
+        <div id="computer-hotspot" title="Klik om de terminal te openen"></div>
+    </div>
+
+    <div id="terminal-overlay">
+        <div class="terminal-content" id="input-container">
+            <p>SYSTEM REBOOT INITIATED...</p>
+            <p>ENTER PASSCODE TO UNFREEZE:</p>
+            <br>
+            <span>> </span>
+            <input type="text" id="command-input" autocomplete="off" autofocus>
+            <span class="cursor">_</span>
+        </div>
+
+        <div id="final-image-container">
+            <img src="2.png" alt="Eind Goed Al Goed">
+        </div>
+    </div>
+
+    <div id="flash-message">JULLIE HEBBEN DE ESCAPEROOM UITGESPEELD!</div>
+
+    <div id="credits-screen">
+        <div id="credits-content">
+            <h1>CREDITS</h1>
+            
+            <div class="credit-block"><div class="credit-role">Concept & Idee</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Ontwerper</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Programmeur</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Verhaallijn Schrijver</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Grafisch Vormgever</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Geluidsregie</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Puzzel Architect</div><div class="credit-name">Devin Verhagen</div></div>
+            
+            <div class="credit-block"><div class="credit-role">Catering (voor zichzelf)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Koffiehalen</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Senior Manager CTRL+C & CTRL+V</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Google Zoekopdrachten</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Directeur 'Heb je de stekker erin zitten?'</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Manager Stressbestendigheid</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Chef Spaghetti Code</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Wifi Fluisteraar</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Senior Typefouten Maker</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Directeur van de Pixels</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Stuntman (voor typewerk)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Specialist in Dingen Kapot Maken</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd 'Heb je het al aan en uit gezet'</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Special Effects (met Paint)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Casting Director</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Location Scout (zijn eigen kamer)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Assistent van de Assistent zijn Assistent</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Afdeling 'Is het al af?'</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Kleurplaat Inkleurder (Binnen de lijntjes)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Beste Vriend van de Computer</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Klap-geluid Coördinator</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Kerstsfeer Manager</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Senior Pizza Vernietiger</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Directeur Cafeïne Beheer</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Manager Uitstelgedrag</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Chips Kruimels</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">CEO van Pauze Houden</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Manager Bureaustoel Draaien</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Hoofd Bug Pletten</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Nachtwerk Specialist</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Toetsenbord Schoonmaker</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Motivatie Coach</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">De man die op 'Save' drukte</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Trainer van de Stofmijten</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Held van de Dag</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Winnaar van de Loterij (hoopt hij)</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Publiekswinnaar</div><div class="credit-name">Devin Verhagen</div></div>
+            <div class="credit-block"><div class="credit-role">Legende</div><div class="credit-name">Devin Verhagen</div></div>
+
+            <div class="final-logo">👑</div>
+            <br><br>
+            <p style="color: #666;">© 2023 Devin Verhagen Productions</p>
+        </div>
+    </div>
+
+
+    <script>
+        // Elementen ophalen
+        const hotspot = document.getElementById('computer-hotspot');
+        const overlay = document.getElementById('terminal-overlay');
+        const input = document.getElementById('command-input');
+        const inputContainer = document.getElementById('input-container');
+        
+        const finalImageContainer = document.getElementById('final-image-container');
+        const flashMessage = document.getElementById('flash-message');
+        
+        const creditsScreen = document.getElementById('credits-screen');
+        const creditsContent = document.getElementById('credits-content'); 
+        
+        const audioClap = document.getElementById('audio-clap');
+        const audioXmas = document.getElementById('audio-xmas');
+
+        // 1. Klik op computer opent de terminal
+        hotspot.addEventListener('click', () => {
+            overlay.style.display = 'flex';
+            input.focus();
+        });
+
+        // 2. Check input voor "awake"
+        input.addEventListener('keyup', (e) => {
+            const val = input.value.trim().toLowerCase();
+            if (val === 'awake') {
+                triggerSuccessSequence();
+            }
+        });
+
+        // Focus behouden
+        overlay.addEventListener('click', () => {
+            if(inputContainer.style.display !== 'none') input.focus();
+        });
+
+        // --- DE GROTE FINALE FUNCTIE ---
+        function triggerSuccessSequence() {
+            // Stap A: Verberg de invoer
+            inputContainer.style.display = 'none';
+
+            // Stap B: Start geluiden
+            audioXmas.volume = 0.6; 
+            audioClap.play().catch(e => console.log("Audio start error:", e));
+            audioXmas.play().catch(e => console.log("Audio start error:", e));
+
+            // Stap C: Toon de nieuwe foto (2.png)
+            finalImageContainer.style.display = 'block';
+
+            // Stap D: Toon het flash bericht "Uitgespeeld"
+            flashMessage.style.display = 'block';
+
+            // Stap E: Verberg het flash bericht weer na 4 seconden
+            setTimeout(() => {
+                 flashMessage.style.display = 'none';
+            }, 4000);
+
+            // Stap F: Wacht 15 seconden en start dan de Credits
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                document.getElementById('scene-container').style.display = 'none';
+                
+                // Toon het credits scherm
+                creditsScreen.style.display = 'flex';
+                
+                // Start de animatie
+                creditsContent.classList.add('start-scrolling');
+
+            }, 15000); 
+        }
+    </script>
+
+</body>
+</html>
